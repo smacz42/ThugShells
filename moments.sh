@@ -109,17 +109,6 @@ main() {
   eecho "Creating files in ${args[1]}${args[0]}"
 
   #
-  # Actually download the video here.
-  #
-  # This should provide progress information in stdout
-  #
-  # This gets saved as the id number with a .mp4 extension
-  #
-  #if [[ ! -f ${args[0]}.mp4 ]]; then
-  #  youtube-dl "https://www.twitch.tv/videos/${args[0]}" -o ${args[0]}.mp4
-  #fi
-
-  #
   # Next we download the chat logs
   #
   # This gets saved as the id number with a .txt extension
@@ -133,14 +122,29 @@ main() {
   local moments=($(get_moments ${args[0]} ${args[2]}))
   eecho "Moments: ${moments[@]}"
 
+  #
+  # Actually download the video here.
+  #
+  # This should provide progress information in stdout
+  #
+  # This gets saved as the id number with a .mp4 extension
+  #
+  # We do this only if there are no previous videos in there,
+  # and if there is at least one moment to capture
+  if [[ ! -f ${args[0]}.mp4 || ! ${#moments} == 0 ]]; then
+    youtube-dl "https://www.twitch.tv/videos/${args[0]}" -o ${args[0]}.mp4
+  fi
+
+
   for moment in "${moments[@]}"; do
     # Get the time of the marker minus 5 minutes
     local startsecs=$(( $(date -d "${moment%/*/*}" "+%s") - $(date -d "00:05:00" "+%s") ))
     local starttime=$(echo "$((startsecs/3600)):$((startsecs%3600/60)):$((startsecs%60))")
     local momenttitle=$(echo ${moment} | cut -d '/' -f 3-)
+    local momentauthor=$(echo ${moment} | cut -d '/' -f 2)
 
     # Cut the video up in a 10-minute clip starting 5 minutes before the marker, and 5 minuntes after
-    ffmpeg -ss ${starttime} -i "${args[1]}/${args[0]}/${args[0]}.mp4" -t 00:10:00 -c copy -y "${momenttitle}.mp4"
+    ffmpeg -ss ${starttime} -i "${args[1]}/${args[0]}/${args[0]}.mp4" -t 00:10:00 -c copy -y "${momentauthor} - ${momenttitle}.mp4"
     eecho "Created ${momenttitle}.mp4"
   done
 }
